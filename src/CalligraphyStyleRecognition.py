@@ -14,13 +14,14 @@ num_epochs = 10
 batch_size = 32
 lr = 0.001
 # 训练数据存放地址
+train_data_pth = ""
+csv_file = ""
+model_save_pth = ""
 def get_train_data_path(train, csv_file_path, model_path):
-    config = {
-        "train_data_pth": train,
-        "csv_file": csv_file_path,
-        "model_save_pth": model_path
-    }
-    return config
+    global train_data_pth, csv_file, model_save_pth
+    train_data_pth = train
+    csv_file = csv_file_path
+    model_save_pth = model_path
     
 #train_data_pth = 'E:/Chinese Calligraphy Script Styles/train' 
 
