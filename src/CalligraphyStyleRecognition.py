@@ -48,7 +48,8 @@ def create_resnet18():
     return model
  
  
-def train_and_save_mode():
+def train_and_save_mode(train, csv_file_path, model_path):
+    
     train_dataset = datasets.ImageFolder(root=train_data_pth, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     # 建立标签索引
