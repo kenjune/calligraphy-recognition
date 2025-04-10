@@ -141,7 +141,11 @@ def book_style_predict(image_array):
  
  
 # 对外调用的训练方法
-def train_style():
+def train_style(train_path,csv_path,model_path):
+    get_train_data_path(
+        train_path,csv_path,model_path
+
+    )
     train_and_save_mode()
  
 # if __name__ == '__main__':
