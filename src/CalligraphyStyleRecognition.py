@@ -17,7 +17,7 @@ lr = 0.001
 
 def get_train_data_path(train, csv_file_path, model_path):
     global train_data_pth, csv_file, model_save_pth
-    train_data_pth = train_data_pth
+    train_data_pth = train
     csv_file = csv_file_path
     model_save_pth = model_path
     
@@ -46,7 +46,7 @@ def create_resnet18():
     return model
  
  
-def train_and_save_mode(train, csv_file_path, model_path):
+def train_and_save_mode():
     
     train_dataset = datasets.ImageFolder(root=train_data_pth, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
