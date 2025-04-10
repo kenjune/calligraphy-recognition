@@ -14,12 +14,10 @@ num_epochs = 10
 batch_size = 32
 lr = 0.001
 # 训练数据存放地址
-train_data_pth = ""
-csv_file = ""
-model_save_pth = ""
+
 def get_train_data_path(train, csv_file_path, model_path):
     global train_data_pth, csv_file, model_save_pth
-    train_data_pth = train
+    train_data_pth = train_data_pth
     csv_file = csv_file_path
     model_save_pth = model_path
     
