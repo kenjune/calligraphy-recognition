@@ -28,6 +28,7 @@ def load_datasets(data_dir, train_transform, test_val_transform, val_ratio=0.2, 
     total_len = len(dataset)
     val_len = int(total_len * val_ratio)
     test_len = int(total_len * test_ratio)
+    print(f'Total samples:{total_len},Validation samples:{val_len},Test samples:{test_len}')
     train_len = total_len - val_len - test_len
 
     train_dataset, val_dataset, test_dataset = random_split(
@@ -36,5 +37,10 @@ def load_datasets(data_dir, train_transform, test_val_transform, val_ratio=0.2, 
     # Apply correct transforms for val/test
     val_dataset.dataset.transform = test_val_transform
     test_dataset.dataset.transform = test_val_transform
+    class_to_idx=dataset.class_to_idx
+    with open("class_mapping.csv","w",newline="",encoding="utf-8") as f:
+        writer=csv.writer(f)
+        for cls,indx in class_to_idx.items():
+            writer.writerow([idx,cls])
 
     return train_dataset, val_dataset, test_dataset

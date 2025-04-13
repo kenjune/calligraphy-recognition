@@ -4,7 +4,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import models
 from tqdm import tqdm
-
+from sklearn.metrics import classification_report,confusion_matrix
+import numpy as np
+import os 
 def create_resnet18(num_classes):
     model = models.resnet18(pretrained=True)
     model.fc = nn.Linear(model.fc.in_features, num_classes)
@@ -12,7 +14,8 @@ def create_resnet18(num_classes):
 
 def evaluate_model(model, loader, criterion, device):
     model.eval()
-    total, correct, total_loss = 0, 0, 0.0
+    y_true=[]
+    y_pred=[]
     with torch.no_grad():
         for inputs, labels in loader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -22,6 +25,14 @@ def evaluate_model(model, loader, criterion, device):
             _, preds = torch.max(outputs, 1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
+            y_true.extend(labels.cpu().numpy())
+            y_pred.extend(preds.cpu().numpy())
+    print("\nclassification report is:\n")
+    print(classification_report(y_true,y_pred))
+    print("\nconfusion matix is :\n")
+    print(confusion_matrix(y_true,y_pred))
+    
+
     return total_loss / len(loader), correct / total
 
 def train_model(train_dataset, val_dataset, test_dataset, num_classes=5, num_epochs=10, batch_size=32, lr=0.001):
@@ -61,8 +72,18 @@ def train_model(train_dataset, val_dataset, test_dataset, num_classes=5, num_epo
 
         print(f"Train Loss: {running_loss / len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc * 100:.2f}%")
+        evaluate_model(model, train_loader,criterion = criterion, device = device)
+        evaluate_model(model, val_loader,criterion=criterion,device=device)
+        
+
 
     test_loss, test_acc = evaluate_model(model, test_loader, criterion, device)
     print(f"\nTest Loss: {test_loss:.4f} | Test Acc: {test_acc * 100:.2f}%")
-
+    print("\n Evaluation on test set:")
+    evaluate_model(model,test_loader,criterion=criterion,device=device)
+    
+    #save the model
+    os.makedirs("models",exist_ok=True)
+    torch.save(model.state_dict(),"saved_models/resnet18_calligraphy.pth")
+    print("\nmodel saved successfully in saved_models/resnet18_calligraphy.pth ")
     return model, train_losses, val_losses, test_loss, test_acc
