@@ -168,7 +168,7 @@ class MisclassifiedDataset(Dataset):
             return img, label 
         
     
- if __name__== "__main__":
+ #if __name__== "__main__":
     
  
 #     
