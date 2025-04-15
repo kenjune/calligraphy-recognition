@@ -2,7 +2,7 @@ import os
 import torch
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, random_split
-
+import csv
 def get_transforms():
     train_transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -40,7 +40,7 @@ def load_datasets(data_dir, train_transform, test_val_transform, val_ratio=0.2, 
     class_to_idx=dataset.class_to_idx
     with open("class_mapping.csv","w",newline="",encoding="utf-8") as f:
         writer=csv.writer(f)
-        for cls,indx in class_to_idx.items():
+        for cls,idx in class_to_idx.items():
             writer.writerow([idx,cls])
 
     return train_dataset, val_dataset, test_dataset

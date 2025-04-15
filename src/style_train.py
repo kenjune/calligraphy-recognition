@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, ConcatDataset
 from torchvision import models
 from tqdm import tqdm
 from sklearn.metrics import classification_report,confusion_matrix
@@ -101,16 +101,30 @@ def train_model(train_dataset, val_dataset, test_dataset, model_name="resnet18",
     evaluate_model(model,test_loader,criterion=criterion,device=device)
     
     #save the model
-    os.makedirs("models",exist_ok=True)
-    torch.save(model.state_dict(),"saved_models/resnet18_calligraphy.pth")
-    print("\nmodel saved successfully in saved_models/resnet18_calligraphy.pth ")
-    return model, train_losses, val_losses, test_loss, test_acc
+    os.makedirs("saved_models",exist_ok=True)
+    torch.save(model.state_dict(),"saved_models/{model_name}_calligraphy.pth")
+    print("\nmodel saved successfully in saved_models/{model_name}_calligraphy.pth ")
+    error=get_misclassified_samples(model_name, train_loader,device)
+    return model, train_losses, val_losses, test_loss, test_acc,error
 
+def get_misclassified_samples(model,data_loader,device):
+    model.eval()
+    errors = []
+    with torch.no_grad():
+        for inputs, labels in data_loader:
+            inputs, labels = inputs.to(device),labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs,1)
+            for i in range(len(labels)):
+                if labels[i] != predicted[i]:
+                    errors.append((inputs[i],labels[i].item(), predicted[i].item()))
+    return errors
 def test_multiple_models(train_dataset, val_dataset, test_dataset, model_names,num_classes=5, num_epochs=10, batch_size=32, lr=0.001 ):
     results = []
+    errors = []
     for model_name in model_names:
         print(f"\n Training and evaluating model: {model_name}")
-        model, train_losses, val_losses, test_loss, test_acc =train_model(
+        model, train_losses, val_losses, test_loss, test_acc, error =train_model(
             train_dataset, val_dataset, test_dataset, model_name=model_name, 
             num_classes = num_classes,
             num_epochs = num_epochs,batch_size = batch_size,lr=lr
@@ -125,9 +139,36 @@ def test_multiple_models(train_dataset, val_dataset, test_dataset, model_names,n
 
             }
         )
+        errors.append(
+            {
+                "model_name": model_name,
+                "error_samples": error,
+                "error_count": len(error)
+            }
+            )
+        
+
     print("\n Comparison of models:")
     for result in results:
         print(f"Model:{result['model_name']} | Test lossess: {result['test_loss']:.4f}| Test accuracy:{result['test_acc']*100:.2f}%")
+    
+
     return results
-# if __name__== "__main__":
+
+class MisclassifiedDataset(Dataset):
+    def __init__(self,error_samples, transform = None):
+        self.samples = error_samples
+        self.transform = transform 
+    def __len__(self):
+        return len(self.samples)
+    def __getitem__(self,idx):
+        img, label = self.samples[idx]
+        if self.transform:
+            img = self.transform(img)
+            return img, label 
+        
+    
+ if __name__== "__main__":
+    
+ 
 #     
