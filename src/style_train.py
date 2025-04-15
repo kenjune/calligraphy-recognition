@@ -49,8 +49,8 @@ def evaluate_model(model, loader, criterion, device):
             y_pred.extend(preds.cpu().numpy())
     print("\nclassification report is:\n")
     print(classification_report(y_true,y_pred))
-    print("\nconfusion matix is :\n")
-    print(confusion_matrix(y_true,y_pred))
+    #print("\nconfusion matix is :\n")
+    #print(confusion_matrix(y_true,y_pred))
     
 
     return total_loss / len(loader), correct / total
@@ -127,7 +127,7 @@ def test_multiple_models(train_dataset, val_dataset, test_dataset, model_names,n
     errors = []
     for model_name in model_names:
         print(f"\n Training and evaluating model: {model_name}")
-        model, train_losses, val_losses, test_loss, test_acc, error =train_model(
+        model, train_losses, val_losses, test_loss, test_acc =train_model(
             train_dataset, val_dataset, test_dataset, model_name=model_name, 
             num_classes = num_classes,
             num_epochs = num_epochs,batch_size = batch_size,lr=lr
@@ -142,13 +142,13 @@ def test_multiple_models(train_dataset, val_dataset, test_dataset, model_names,n
 
             }
         )
-        errors.append(
-            {
-                "model_name": model_name,
-                "error_samples": error,
-                "error_count": len(error)
-            }
-            )
+        #errors.append(
+            #{
+             #   "model_name": model_name,
+              #  "error_samples": error,
+               # "error_count": len(error)
+            #}
+            #)
         
 
     print("\n Comparison of models:")
