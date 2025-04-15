@@ -11,7 +11,24 @@ def create_resnet18(num_classes):
     model = models.resnet18(pretrained=True)
     model.fc = nn.Linear(model.fc.in_features, num_classes)
     return model
+def create_resnet50(num_classes):
+    model = models.resnet50(pretrained=True)
+    model.fc=nn.Linear(model.fc.in_features,num_classes)
+    return model 
+def create_vgg16(num_classes):
+    model = models.vgg16(pretrained = True)
+    model.classifier[6] = nn.Linear(model.classifier[6].in_features,num_classes)
+    return model
+MODEL_REGISTRY ={
+    "resnet18" : create_resnet18,
+    "resnet50" : create_resnet50,
+    "vgg16" : create_vgg16,
 
+}
+def get_model(model_name, num_classes):
+    if model_name not in MODEL_REGISTRY:
+        raise ValueError(f" Model {model_name} not found in registry.")
+    return MODEL_REGISTRY[model_name](num_classes)
 def evaluate_model(model, loader, criterion, device):
     model.eval()
     y_true=[]
@@ -35,9 +52,10 @@ def evaluate_model(model, loader, criterion, device):
 
     return total_loss / len(loader), correct / total
 
-def train_model(train_dataset, val_dataset, test_dataset, num_classes=5, num_epochs=10, batch_size=32, lr=0.001):
+def train_model(train_dataset, val_dataset, test_dataset, model_name="resnet18",num_classes=5, num_epochs=10, batch_size=32, lr=0.001):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = create_resnet18(num_classes).to(device)
+    model = get_model(model_name, num_classes).to(device)
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -87,3 +105,29 @@ def train_model(train_dataset, val_dataset, test_dataset, num_classes=5, num_epo
     torch.save(model.state_dict(),"saved_models/resnet18_calligraphy.pth")
     print("\nmodel saved successfully in saved_models/resnet18_calligraphy.pth ")
     return model, train_losses, val_losses, test_loss, test_acc
+
+def test_multiple_models(train_dataset, val_dataset, test_dataset, model_names,num_classes=5, num_epochs=10, batch_size=32, lr=0.001 ):
+    results = []
+    for model_name in model_names:
+        print(f"\n Training and evaluating model: {model_name}")
+        model, train_losses, val_losses, test_loss, test_acc =train_model(
+            train_dataset, val_dataset, test_dataset, model_name=model_name, 
+            num_classes = num_classes,
+            num_epochs = num_epochs,batch_size = batch_size,lr=lr
+
+        )
+        results.append(
+            {
+                "model_name": model_name,
+                "test_loss": test_loss,
+                "test_acc": test_acc,
+
+
+            }
+        )
+    print("\n Comparison of models:")
+    for result in results:
+        print(f"Model:{result['model_name']} | Test lossess: {result['test_loss']:.4f}| Test accuracy:{result['test_acc']*100:.2f}%")
+    return results
+# if __name__== "__main__":
+#     
