@@ -107,8 +107,8 @@ def train_model(train_dataset, val_dataset, test_dataset, model_name="resnet18",
     os.makedirs("saved_models",exist_ok=True)
     torch.save(model.state_dict(),"saved_models/{model_name}_calligraphy.pth")
     print("\nmodel saved successfully in saved_models/{model_name}_calligraphy.pth ")
-    error=get_misclassified_samples(model_name, train_loader,device)
-    return model, train_losses, val_losses, test_loss, test_acc,error
+    #error=get_misclassified_samples(model_name, train_loader,device)
+    return model, train_losses, val_losses, test_loss, test_acc,#error
 
 def get_misclassified_samples(model,data_loader,device):
     model.eval()
