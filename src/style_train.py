@@ -7,47 +7,134 @@ from tqdm import tqdm
 from sklearn.metrics import classification_report,confusion_matrix
 import numpy as np
 import os 
+
+class BasicConv(nn.Module):
+    def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True):
+        super(BasicConv, self).__init__()
+        self.out_channels = out_planes
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
+                              stride=stride, padding=padding, dilation=dilation,
+                              groups=groups, bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+        self.relu = nn.ReLU(inplace=True) if relu else None
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        if self.relu:
+            x = self.relu(x)
+        return x
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+
+        self.fc1   = nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False)
+        self.relu1 = nn.ReLU()
+        self.fc2   = nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False)
+
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
+        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
+        out = avg_out + max_out
+        return self.sigmoid(out)
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super(SpatialAttention, self).__init__()
+        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
+        padding = 3 if kernel_size == 7 else 1
+
+        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.conv1(x)
+        return self.sigmoid(x)
+
+class CBAM(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(CBAM, self).__init__()
+        self.ca = ChannelAttention(in_planes, ratio)
+        self.sa = SpatialAttention()
+
+    def forward(self, x):
+        out = x * self.ca(x)
+        out = out * self.sa(out)
+        return out
+    
+class ResNetWithCBAM(nn.Module):
+    def __init__(self, base_model, num_classes):
+        super(ResNetWithCBAM, self).__init__()
+        self.features = nn.Sequential(
+            base_model.conv1,
+            base_model.bn1,
+            base_model.relu,
+            base_model.maxpool,
+            base_model.layer1,
+            base_model.layer2,
+            self._attach_cbam(base_model.layer3),
+            self._attach_cbam(base_model.layer4),
+        )
+        self.avgpool = base_model.avgpool
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(base_model.fc.in_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
+        )
+
+    def _attach_cbam(self, layer):
+        for i in range(len(layer)):
+            layer[i].cbam = CBAM(layer[i].conv3.out_channels)
+            orig_forward = layer[i].forward
+
+            def new_forward(x, orig_forward=orig_forward, block=layer[i]):
+                out = orig_forward(x)
+                out = block.cbam(out)
+                return out
+
+            layer[i].forward = new_forward
+        return layer
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = self.classifier(x)
+        return x
+
 def create_resnet18(num_classes):
-    model = models.resnet18(pretrained=True)
-    
-    model.fc = nn.Sequential(
-    nn.Linear(model.fc.in_features, 256),  # 增加表达能力
-    nn.ReLU(),                             # 增加非线性
-    nn.Dropout(0.5),                       # 降低过拟合
-    nn.Linear(256, num_classes)           # 输出你自己的类别数
-)
+    base_model = models.resnet18(pretrained=True)
+    return ResNetWithCBAM(base_model, num_classes)
 
-    
-
-    
-    return model
 def create_resnet50(num_classes):
-    model = models.resnet50(pretrained=True)
-    model.fc = nn.Sequential(
-    nn.Linear(model.fc.in_features, 256),  # 增加表达能力
-    nn.ReLU(),                             # 增加非线性
-    nn.Dropout(0.5),                       # 降低过拟合
-    nn.Linear(256, num_classes)           # 输出你自己的类别数
-)
+    base_model = models.resnet50(pretrained=True)
+    return ResNetWithCBAM(base_model, num_classes)
 
-    return model 
 def efficientnet(num_classes):
-    model = models.efficientnet_b0(pretrained = True)
-    model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, num_classes),
-        nn.Dropout(0.5)
+    model = models.efficientnet_b0(pretrained=True)
+    model.classifier = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(model.classifier[1].in_features, num_classes)
     )
     return model
 
-MODEL_REGISTRY ={
-    "resnet18" : create_resnet18,
-    "resnet50" : create_resnet50,
-    "efficientnet" : efficientnet,
-
+MODEL_REGISTRY = {
+    "resnet18": create_resnet18,
+    "resnet50": create_resnet50,
+    "efficientnet": efficientnet,
 }
 def get_model(model_name, num_classes):
     if model_name not in MODEL_REGISTRY:
-        raise ValueError(f" Model {model_name} not found in registry.")
+        raise ValueError(f"Model {model_name} not found in registry.")
     return MODEL_REGISTRY[model_name](num_classes)
 def evaluate_model(model, loader, criterion, device):
     model.eval()
