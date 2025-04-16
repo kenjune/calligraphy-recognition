@@ -94,6 +94,12 @@ class ResNetWithCBAM(nn.Module):
 
     def _attach_cbam(self, layer):
         for i in range(len(layer)):
+            if hasattr(layer[i],'conv3'):
+                out_channels = layer[i].conv3.out_channels
+            elif hasattr(layer[i],'conv2'):
+                out_channels = layer[i].conv2.out_channels
+            else:
+                raise ValueError("Unsupported layer type for CBAM attachment")
             layer[i].cbam = CBAM(layer[i].conv3.out_channels)
             orig_forward = layer[i].forward
 
