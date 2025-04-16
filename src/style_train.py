@@ -9,18 +9,27 @@ import numpy as np
 import os 
 def create_resnet18(num_classes):
     model = models.resnet18(pretrained=True)
+    
     model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, num_classes),
-        nn.Dropout(0.5)
-    )
+    nn.Linear(model.fc.in_features, 256),  # 增加表达能力
+    nn.ReLU(),                             # 增加非线性
+    nn.Dropout(0.5),                       # 降低过拟合
+    nn.Linear(256, num_classes)           # 输出你自己的类别数
+)
+
+    
+
     
     return model
 def create_resnet50(num_classes):
     model = models.resnet50(pretrained=True)
     model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, num_classes),
-        nn.Dropout(0.5)
-    )
+    nn.Linear(model.fc.in_features, 256),  # 增加表达能力
+    nn.ReLU(),                             # 增加非线性
+    nn.Dropout(0.5),                       # 降低过拟合
+    nn.Linear(256, num_classes)           # 输出你自己的类别数
+)
+
     return model 
 def efficientnet(num_classes):
     model = models.efficientnet_b0(pretrained = True)
