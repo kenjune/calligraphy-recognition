@@ -9,6 +9,8 @@ def get_transforms():
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(20),
         transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        # 做一个灰度
+        transforms.RandomGrayscale(p=0.1)
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], 
                              [0.229, 0.224, 0.225])
