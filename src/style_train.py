@@ -9,20 +9,31 @@ import numpy as np
 import os 
 def create_resnet18(num_classes):
     model = models.resnet18(pretrained=True)
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    model.fc = nn.Sequential(
+        nn.Linear(model.fc.in_features, num_classes),
+        nn.Dropout(0.5)
+    )
+    
     return model
 def create_resnet50(num_classes):
     model = models.resnet50(pretrained=True)
-    model.fc=nn.Linear(model.fc.in_features,num_classes)
+    model.fc = nn.Sequential(
+        nn.Linear(model.fc.in_features, num_classes),
+        nn.Dropout(0.5)
+    )
     return model 
-def create_vgg16(num_classes):
-    model = models.vgg16(pretrained = True)
-    model.classifier[6] = nn.Linear(model.classifier[6].in_features,num_classes)
+def efficientnet(num_classes):
+    model = models.efficientnet_b0(pretrained = True)
+    model.fc = nn.Sequential(
+        nn.Linear(model.fc.in_features, num_classes),
+        nn.Dropout(0.5)
+    )
     return model
+
 MODEL_REGISTRY ={
     "resnet18" : create_resnet18,
     "resnet50" : create_resnet50,
-    "vgg16" : create_vgg16,
+    "efficientnet" : efficientnet,
 
 }
 def get_model(model_name, num_classes):
@@ -60,7 +71,8 @@ def train_model(train_dataset, val_dataset, test_dataset, model_name="resnet18",
     model = get_model(model_name, num_classes).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr,weight_decay=1e-4)
+
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
@@ -93,7 +105,8 @@ def train_model(train_dataset, val_dataset, test_dataset, model_name="resnet18",
 
         print(f"Train Loss: {running_loss / len(train_loader):.4f} | Train Acc: {train_acc:.2f}%")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc * 100:.2f}%")
-        evaluate_model(model, train_loader,criterion = criterion, device = device)
+        #evaluate_model(model, train_loader,criterion = criterion, device = device)
+        print("\n Evaluation on validatioan set:")
         evaluate_model(model, val_loader,criterion=criterion,device=device)
         
 
@@ -174,4 +187,4 @@ class MisclassifiedDataset(Dataset):
  #if __name__== "__main__":
     
  
-#     
+#   
