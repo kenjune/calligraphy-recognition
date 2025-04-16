@@ -47,50 +47,53 @@ def create_resnet18():
  
  
 def train_and_save_mode():
-    
     train_dataset = datasets.ImageFolder(root=train_data_pth, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    # 建立标签索引
+
+    # 建立标签索引并保存为 csv
     class_to_idx = train_dataset.class_to_idx
-    class_dict = {}
-    for key, val in class_to_idx.items():
-        class_dict[val] = key
+    class_dict = {val: key for key, val in class_to_idx.items()}
     with open(csv_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         for idx, label in class_dict.items():
             writer.writerow([idx, label])
- 
+
     model = create_resnet18().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
- 
+
+    epoch_loss_list = []
+    epoch_acc_list = []
+
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
         correct = 0
         total = 0
-        # 使用tqdm显示进度条
         with tqdm(train_loader, unit="batch") as tepoch:
             for inputs, labels in tepoch:
                 tepoch.set_description(f"Epoch {epoch + 1}/{num_epochs}")
- 
                 inputs, labels = inputs.to(device), labels.to(device)
                 optimizer.zero_grad()
- 
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
- 
+
                 running_loss += loss.item()
                 _, predicted = outputs.max(1)
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
- 
                 tepoch.set_postfix(loss=running_loss / len(train_loader), accuracy=100. * correct / total)
- 
+
+        epoch_loss_list.append(running_loss / len(train_loader))
+        epoch_acc_list.append(100. * correct / total)
+
     # 保存模型
     torch.save(model.state_dict(), model_save_pth)
+
+    return epoch_loss_list, epoch_acc_list
+
  
  
 # 加载全局下标映射
