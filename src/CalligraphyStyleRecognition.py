@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, models, transforms
 from tqdm import tqdm
 from PIL import Image
- 
+from sklearn.model_selection import train_test_split 
 num_class = 5
 num_epochs = 10
 batch_size = 32
