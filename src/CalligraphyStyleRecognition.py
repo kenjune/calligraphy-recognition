@@ -47,11 +47,22 @@ def create_resnet18():
  
  
 def train_and_save_mode():
-    train_dataset = datasets.ImageFolder(root=train_data_pth, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    # 加载原始训练集
+    full_dataset = datasets.ImageFolder(root=train_data_pth, transform=transform)
 
-    # 建立标签索引并保存为 csv
-    class_to_idx = train_dataset.class_to_idx
+    # 划分 train 和 val 索引
+    indices = list(range(len(full_dataset)))
+    train_idx, val_idx = train_test_split(indices, test_size=0.2, stratify=full_dataset.targets, random_state=42)
+
+    # 创建子集
+    train_dataset = Subset(full_dataset, train_idx)
+    val_dataset = Subset(full_dataset, val_idx)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    # 建立标签索引并保存为 CSV
+    class_to_idx = full_dataset.class_to_idx
     class_dict = {val: key for key, val in class_to_idx.items()}
     with open(csv_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
@@ -62,37 +73,52 @@ def train_and_save_mode():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    epoch_loss_list = []
-    epoch_acc_list = []
+    train_loss_list = []
+    val_loss_list = []
+    train_acc_list = []
+    val_acc_list = []
 
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
         correct = 0
         total = 0
-        with tqdm(train_loader, unit="batch") as tepoch:
-            for inputs, labels in tepoch:
-                tepoch.set_description(f"Epoch {epoch + 1}/{num_epochs}")
+        for inputs, labels in tqdm(train_loader, desc=f'Train Epoch {epoch + 1}/{num_epochs}'):
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+
+        train_loss_list.append(running_loss / len(train_loader))
+        train_acc_list.append(100. * correct / total)
+
+        # 验证集评估
+        model.eval()
+        val_loss = 0.0
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for inputs, labels in val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
+                val_loss += loss.item()
                 _, predicted = outputs.max(1)
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
-                tepoch.set_postfix(loss=running_loss / len(train_loader), accuracy=100. * correct / total)
-
-        epoch_loss_list.append(running_loss / len(train_loader))
-        epoch_acc_list.append(100. * correct / total)
+        val_loss_list.append(val_loss / len(val_loader))
+        val_acc_list.append(100. * correct / total)
 
     # 保存模型
     torch.save(model.state_dict(), model_save_pth)
 
-    return epoch_loss_list, epoch_acc_list
+    return train_loss_list, val_loss_list, train_acc_list, val_acc_list
 
  
  
